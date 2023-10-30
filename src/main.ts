@@ -8,7 +8,7 @@ interface iOmdbApi {
     key: string
 }
 
-const path = require('path');
+const path = require('path'); 
 const scriptPath = process.argv[1];
 const scriptDirectory = path.dirname(scriptPath);
 const data = JSON.parse(fs.readFileSync(`${scriptDirectory}/filelist.json`, 'utf8')) as Array<string>;
@@ -21,6 +21,7 @@ async function checkOnlineDb(titlePart: string, year: number): Promise<AxiosResp
     const params = { apikey: omdbapi.key, s: titlePart, r: 'json', y: String(year), type: 'movie' };
     return axios.get<omdbResponse>(url.href, { params });
 }
+
 async function main(): Promise<void> {
     try {
 
@@ -68,17 +69,17 @@ async function main(): Promise<void> {
                     Search.map(x => {
                         let hitCount = 0;
                         let tkzdN = tokenizer.tokenize(x.Title.toLowerCase())?.filter(word => !stopwords.includes(word))!;
-
                         for (let index = 0; index < words.length; index++) {
                             if (index <= tkzdN.length && (words[index] == tkzdN[index])) {
                                 hitCount++
                             }
                         }
-
+                        
                         if (hitCount > lastHitCount) {
                             lastHitCount = hitCount;
                             foundTitle = `${x.Title} (${yyyy})`;
                         }
+                        // console.log(`hit count: ${hitCount}: ${x.Title}`);
 
                     });
                     console.log(`MATCHED: ${title} to [${foundTitle}]`);
