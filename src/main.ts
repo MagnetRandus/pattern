@@ -8,10 +8,10 @@ interface iOmdbApi {
     key: string
 }
 
-const path = require('path'); 
+const path = require('path');
 const scriptPath = process.argv[1];
 const scriptDirectory = path.dirname(scriptPath);
-const data = JSON.parse(fs.readFileSync(`${scriptDirectory}/filelist.json`, 'utf8')) as Array<string>;
+const arrFileNames = JSON.parse(fs.readFileSync(`${scriptDirectory}/filelist.json`, 'utf8')) as Array<string>;
 const omdbapi = JSON.parse(fs.readFileSync(`${scriptDirectory}/../private/omdbapi.json`, 'utf8')) as iOmdbApi;
 
 const tokenizer = new natural.WordTokenizer();
@@ -27,7 +27,7 @@ async function main(): Promise<void> {
 
         const titles = new Array<string[]>();
 
-        data.map(x => {
+        arrFileNames.map(x => {
             try {
                 const filenameOnly = x.substring(0, x.lastIndexOf('.'));
                 const rx4DigitNr = /\b\d{4}\b/g;
@@ -42,9 +42,10 @@ async function main(): Promise<void> {
                     tkzd = [yyyy, ...tkzd];
                     titles.push(tkzd);
 
-                } else {
-                    console.log(`Rejecting [${filenameOnly}]`);
-                }
+                } 
+                // else {
+                //     console.log(`Rejecting [${filenameOnly}]`);
+                // }
 
             } catch (error) {
                 console.dir(error);
@@ -59,50 +60,67 @@ async function main(): Promise<void> {
             const { config, data, headers, status, statusText, request } = await checkOnlineDb(firstWord, Number(yyyy));
 
             if (status == 200) {
+
                 const { Search } = data;
 
-                console.log(`\n\n[${title}-${yyyy}] :`);
                 let foundTitle = ``;
                 let lastHitCount = 0;
 
-                if (Search !== null && typeof Search !== 'undefined') {
-                    Search.map(x => {
-                        let hitCount = 0;
-                        let tkzdN = tokenizer.tokenize(x.Title.toLowerCase())?.filter(word => !stopwords.includes(word))!;
-                        for (let index = 0; index < words.length; index++) {
-                            if (index <= tkzdN.length && (words[index] == tkzdN[index])) {
-                                hitCount++
-                            }
-                        }
-                        
-                        if (hitCount > lastHitCount) {
-                            lastHitCount = hitCount;
-                            foundTitle = `${x.Title} (${yyyy})`;
-                        }
-                        // console.log(`hit count: ${hitCount}: ${x.Title}`);
+                for (const omdbInf of Search) {
+                    let hitCount = 0;
+                    let tkzOmdbTitle = tokenizer.tokenize(omdbInf.Title.toLowerCase())?.filter(word => !stopwords.includes(word))!;
 
-                    });
-                    console.log(`MATCHED: ${title} to [${foundTitle}]`);
-                } else {
-                    console.log(`None found: ${title}`);
+                    for (let index = 0; index < words.length; index++) {
+
+                        if (index <= tkzOmdbTitle.length && (words[index] == tkzOmdbTitle[index])) {
+                            hitCount++
+                        } else {
+                            hitCount -= tkzOmdbTitle.slice(index).length;
+                            index = words.length; //exit loop
+                        }
+
+                    }
+
+                    if (hitCount > lastHitCount) {
+                        lastHitCount = hitCount;
+                        foundTitle = `${omdbInf.Title} (${yyyy})`;
+                        console.log(`MATCHED: ${title} to [${foundTitle}]`);
+                    }
+
+                    // console.log(`hit count: ${hitCount}: ${omdbInf.Title}`);
                 }
+
+                // if (Search !== null && typeof Search !== 'undefined') {
+                //     Search.map(x => {
+                //         let hitCount = 0;
+                //         let tkzdN = tokenizer.tokenize(x.Title.toLowerCase())?.filter(word => !stopwords.includes(word))!;
+                //         for (let index = 0; index < words.length; index++) {
+                //             if (index <= tkzdN.length && (words[index] == tkzdN[index])) {
+                //                 hitCount++
+                //             }
+                //         }
+
+                //         if (hitCount > lastHitCount) {
+                //             lastHitCount = hitCount;
+                //             foundTitle = `${x.Title} (${yyyy})`;
+                //         }
+                //         console.log(`hit count: ${hitCount}: ${x.Title}`);
+
+                //     });
+                //     console.log(`MATCHED: ${title} to [${foundTitle}]`);
+                // } else {
+                //     console.log(`None found: ${title}`);
+                // }
 
             }
             else
                 console.log(`ERROR: ${statusText}`);
         }
         // const r = checkOnlineDb(wordsd[0], Number(year));
-
         // const movieResults = await Promise.all(mResults);
         // const xx = movieResults.map(x => x.data);
-
         // let r = new Array<any>();
-
-
         // console.log('done');
-
-
-
 
         console.log('done');
 
